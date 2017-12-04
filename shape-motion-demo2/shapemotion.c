@@ -15,6 +15,7 @@
 #include <abCircle.h>
 
 #define GREEN_LED BIT6
+#define SW0 BIT0
 char str[3];
 int numL = 0;
 int numR = 0;
@@ -24,7 +25,7 @@ AbRect rect10 = {abRectGetBounds, abRectCheck, {3,15}}; /**< 10x10 rectangle */ 
 AbRect rect11 = {abRectGetBounds, abRectCheck, {3,15}}; /**< 10x10 rectangle */ //BLACK RECTANGLE
 //AbRArrow rightArrow = {abRArrowGetBounds, abRArrowCheck, 30};
 
-AbRectOutline fieldOutline = {	/* playing field */
+AbRectOutline fieldOutline = {	/* playing field */ //line drawn
   abRectOutlineGetBounds, abRectOutlineCheck,   
   {screenWidth/2 - .5, screenHeight/2 - .5}
 };
@@ -74,15 +75,15 @@ typedef struct MovLayer_s {
 } MovLayer;
 
 /* initial value of {0,0} will be overwritten */
-MovLayer ml2 = { &layer2, {0,0}, 0 }; // {whats moving, direction, }
-MovLayer ml1 = { &layer1, {0,3}, &ml2 }; // {whats moving, direction, }
+//MovLayer ml2 = { &layer2, {0,0}, 0 }; // {whats moving, direction, }
+int redU = 0;
+MovLayer ml1 = { &layer1, {0,0}, 0 }; // {whats moving, direction, }
 MovLayer ml0 = { &layer0, {3,3}, &ml1 }; /**< not all layers move */ //circle moving
 
 //MovLayer ml1 = { &layer1, {1,2}, &ml3 }; 
 //MovLayer ml0 = { &layer0, {2,1}, &ml1 }; 
 
-void movLayerDraw(MovLayer *movLayers, Layer *layers)
-{
+void movLayerDraw(MovLayer *movLayers, Layer *layers){
   int row, col;
   MovLayer *movLayer;
 
@@ -119,7 +120,7 @@ void movLayerDraw(MovLayer *movLayers, Layer *layers)
 }	  
 
 
-Region fence = {{screenWidth-5, (screenHeight/2)}, {SHORT_EDGE_PIXELS-10, LONG_EDGE_PIXELS-10}}; /**< Create a fence region */
+Region fence = {{screenWidth-5, (screenHeight/2)}, {0, 0}}; /**< Create a fence region */
 
 
 /** Advances a moving shape within a fence
@@ -136,6 +137,11 @@ void mlAdvance(MovLayer *ml, Region *fence)
   for (; ml; ml = ml->next) {
     vec2Add(&newPos, &ml->layer->posNext, &ml->velocity);//ball will disapear
     abShapeGetBounds(ml->layer->abShape, &newPos, &shapeBoundary);//ball boundary
+    
+    char switch1_state_down = (p2sw_read() & SW0) ? 0 : 1; /* 0 when SW1 is up */
+            if(switch1_state_down){
+                drawString5x7(70,70, "BIANCA", COLOR_BLACK, COLOR_WHITE);
+            }
     
     for (axis = 0; axis < 2; axis ++) {
          drawString5x7(10,10, "YOU:", COLOR_BLACK, COLOR_WHITE);
@@ -154,6 +160,7 @@ void mlAdvance(MovLayer *ml, Region *fence)
             //newPos.axes[1] += 0;//(screenHeight/2);
             if(numL > 2){
                 drawString5x7(40,60, "YOU LOSE!:", COLOR_BLACK, COLOR_WHITE);
+                layerGetBounds(&fieldLayer, &ml1);//this restarts the game!!!!!!!!!!!!!
                 numL = 0;
                 numR = 0;
                 break;
@@ -166,14 +173,13 @@ void mlAdvance(MovLayer *ml, Region *fence)
         else if (shapeBoundary.botRight.axes[0] > fence->botRight.axes[0]){
             drawString5x7(40,60, "HIT RIGHT", COLOR_BLACK, COLOR_WHITE);
             numR += 1;
-            p2sw_init(1);
-            if(p2sw_read()){
-               drawString5x7(30,40, "button2", COLOR_BLACK, COLOR_WHITE); 
-            }
+            mlAdvance(&ml1, &layer1);
+            //p2sw_init(1);
             //newPos.axes[0] += 0;// (screenWidth/2);
             //newPos.axes[1] += 0;//(screenHeight/2);
             if(numR > 2){
                 drawString5x7(40,60, "YOU WIN!:", COLOR_BLACK, COLOR_WHITE);
+                layerGetBounds(&fieldLayer, &ml1);//this restarts the game!!!!!!!!!!!!!
                 numR = 0;
                 numL = 0;
                // P1OUT = (1 & p2sw_read());
@@ -243,7 +249,7 @@ void wdt_c_handler()
   P1OUT |= GREEN_LED;		      /**< Green LED on when cpu on */
   count ++;
   if (count == 15) {
-    mlAdvance(&ml0, &fieldFence);
+   mlAdvance(&ml0, &fieldFence);
     if (p2sw_read())
       redrawScreen = 1;
     count = 0;
