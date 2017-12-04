@@ -15,10 +15,13 @@
 #include <abCircle.h>
 
 #define GREEN_LED BIT6
+char str[3];
+int numL = 0;
+int numR = 0;
 
 
-AbRect rect10 = {abRectGetBounds, abRectCheck, {3,15}}; /**< 10x10 rectangle */
-AbRect rect11 = {abRectGetBounds, abRectCheck, {3,15}}; /**< 10x10 rectangle */
+AbRect rect10 = {abRectGetBounds, abRectCheck, {3,15}}; /**< 10x10 rectangle */ //RED RECTANGLE
+AbRect rect11 = {abRectGetBounds, abRectCheck, {3,15}}; /**< 10x10 rectangle */ //BLACK RECTANGLE
 //AbRArrow rightArrow = {abRArrowGetBounds, abRArrowCheck, 30};
 
 AbRectOutline fieldOutline = {	/* playing field */
@@ -71,7 +74,10 @@ typedef struct MovLayer_s {
 } MovLayer;
 
 /* initial value of {0,0} will be overwritten */
-MovLayer ml0 = { &layer0, {1,1}, 0 }; /**< not all layers move */ //circle moving
+MovLayer ml2 = { &layer2, {0,0}, 0 }; // {whats moving, direction, }
+MovLayer ml1 = { &layer1, {0,3}, &ml2 }; // {whats moving, direction, }
+MovLayer ml0 = { &layer0, {3,3}, &ml1 }; /**< not all layers move */ //circle moving
+
 //MovLayer ml1 = { &layer1, {1,2}, &ml3 }; 
 //MovLayer ml0 = { &layer0, {2,1}, &ml1 }; 
 
@@ -96,40 +102,25 @@ void movLayerDraw(MovLayer *movLayers, Layer *layers)
 		bounds.botRight.axes[0], bounds.botRight.axes[1]);
     for (row = bounds.topLeft.axes[1]; row <= bounds.botRight.axes[1]; row++) {
       for (col = bounds.topLeft.axes[0]; col <= bounds.botRight.axes[0]; col++) {
-       
-          
-          drawString5x7(10,10, "switches:", COLOR_RED, COLOR_BLUE);
-  while (1) {
-    u_int switches = p2sw_read(), i;
-    char str[5];
-    for (i = 0; i < 4; i++)
-      str[i] = (switches & (1<<i)) ? '-' : '0'+i;
-    str[4] = 0;
-    drawString5x7(20,20, str, COLOR_GREEN, COLOR_BLUE);
-  } 
-          
-	Vec2 pixelPos = {col, row};
-	u_int color = bgColor;
-	Layer *probeLayer;
-	for (probeLayer = layers; probeLayer; 
+        Vec2 pixelPos = {col, row};
+        u_int color = bgColor;
+        Layer *probeLayer;
+        for (probeLayer = layers; probeLayer; 
 	     probeLayer = probeLayer->next) { /* probe all layers, in order */
-	  if (abShapeCheck(probeLayer->abShape, &probeLayer->pos, &pixelPos)) {
+        if (abShapeCheck(probeLayer->abShape, &probeLayer->pos, &pixelPos)) {
 	    color = probeLayer->color;
 	    break; 
 	  } /* if probe check */
 	} // for checking all layers at col, row
 	lcd_writeColor(color);
-    
-    
-    
       } // for col
     } // for row
   } // for moving layer being updated
 }	  
 
 
+Region fence = {{screenWidth-5, (screenHeight/2)}, {SHORT_EDGE_PIXELS-10, LONG_EDGE_PIXELS-10}}; /**< Create a fence region */
 
-//Region fence = {{10,30}, {SHORT_EDGE_PIXELS-10, LONG_EDGE_PIXELS-10}}; /**< Create a fence region */
 
 /** Advances a moving shape within a fence
  *  
@@ -138,21 +129,66 @@ void movLayerDraw(MovLayer *movLayers, Layer *layers)
  */
 void mlAdvance(MovLayer *ml, Region *fence)
 {
+//char str[1];
   Vec2 newPos;
   u_char axis;
   Region shapeBoundary;
   for (; ml; ml = ml->next) {
-    vec2Add(&newPos, &ml->layer->posNext, &ml->velocity);
-    abShapeGetBounds(ml->layer->abShape, &newPos, &shapeBoundary);
+    vec2Add(&newPos, &ml->layer->posNext, &ml->velocity);//ball will disapear
+    abShapeGetBounds(ml->layer->abShape, &newPos, &shapeBoundary);//ball boundary
+    
     for (axis = 0; axis < 2; axis ++) {
-      if ((shapeBoundary.topLeft.axes[axis] < fence->topLeft.axes[axis]) ||
-	  (shapeBoundary.botRight.axes[axis] > fence->botRight.axes[axis]) ) {
-	int velocity = ml->velocity.axes[axis] = -ml->velocity.axes[axis];
-	newPos.axes[axis] += (2*velocity);
+         drawString5x7(10,10, "YOU:", COLOR_BLACK, COLOR_WHITE);
+         drawString5x7(70,10, "COMPUTER:", COLOR_BLACK, COLOR_WHITE);
+      if ((shapeBoundary.topLeft.axes[axis] < fence->topLeft.axes[axis]) || (shapeBoundary.botRight.axes[axis] > fence->botRight.axes[axis])){// axes at pos 0 contains L&R and pos  T&B
+           drawString5x7(40,60, "HIT T/B", COLOR_BLACK, COLOR_WHITE);
+        int velocity = ml->velocity.axes[axis] = -ml->velocity.axes[axis];
+        newPos.axes[axis] += (2*velocity);
       }	/**< if outside of fence */
+        
+        /*LEFT*/
+        else if (shapeBoundary.topLeft.axes[0] < fence->topLeft.axes[0]){// axes at pos 0 contains L&R and pos 1
+            drawString5x7(40,60, "HIT LEFT", COLOR_BLACK, COLOR_WHITE);
+            numL += 1;
+            //newPos.axes[0] += 0; // (screenWidth/2);
+            //newPos.axes[1] += 0;//(screenHeight/2);
+            if(numL > 2){
+                drawString5x7(40,60, "YOU LOSE!:", COLOR_BLACK, COLOR_WHITE);
+                numL = 0;
+                numR = 0;
+                break;
+            }
+            
+        //reset ball
+        }
+      
+      /*RIGHT*/
+        else if (shapeBoundary.botRight.axes[0] > fence->botRight.axes[0]){
+            drawString5x7(40,60, "HIT RIGHT", COLOR_BLACK, COLOR_WHITE);
+            numR += 1;
+            p2sw_init(1);
+            if(p2sw_read()){
+               drawString5x7(30,40, "button2", COLOR_BLACK, COLOR_WHITE); 
+            }
+            //newPos.axes[0] += 0;// (screenWidth/2);
+            //newPos.axes[1] += 0;//(screenHeight/2);
+            if(numR > 2){
+                drawString5x7(40,60, "YOU WIN!:", COLOR_BLACK, COLOR_WHITE);
+                numR = 0;
+                numL = 0;
+               // P1OUT = (1 & p2sw_read());
+                //clearScreen(COLOR_BLACK);
+                break;
+             }
+            //reset ball
+        }
+         ml->layer->posNext = newPos;
+        str[0] = '0' + numL;
+        str[1] = '0' + numR;
+        drawString5x7(40,30, str, COLOR_BLACK, COLOR_VIOLET);
     } /**< for axis */
-    ml->layer->posNext = newPos;
   } /**< for ml */
+
 }
 
 
@@ -179,6 +215,7 @@ void main()
 
   layerInit(&layer0);
   layerDraw(&layer0);
+  
 
 
   layerGetBounds(&fieldLayer, &fieldFence);
