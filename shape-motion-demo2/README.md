@@ -1,6 +1,8 @@
 # Project 3: PONG
 
 ## Game instruction
+Select shape-motion-demo2 file to view all files for the game pong
+
 The purpose of this game is for the the ball to only hit the paddles and not the sides; for which the user is able to adjust them on a button press. The player that reaches the max number allowed for the game will lose.
 
 In this game you will be able to move the paddles on the screen by pressing the buttons.
