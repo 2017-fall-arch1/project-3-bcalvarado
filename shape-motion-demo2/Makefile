@@ -10,7 +10,7 @@ AS              = msp430-elf-gcc -mmcu=${CPU} -c
 all:shapemotion.elf
 
 #additional rules for files
-shapemotion.elf: ${COMMON_OBJECTS} shapemotion.o buzzer.o wdt_handler.o ../p2swLib/p2switches.o
+shapemotion.elf: ${COMMON_OBJECTS} shapemotion.o stateAs.c buzzer.o wdt_handler.o ../p2swLib/p2switches.o
 	${CC} ${CFLAGS} ${LDFLAGS} -o $@ $^ -lTimer -lLcd -lShape -lCircle -lp2sw
 
 load: shapemotion.elf

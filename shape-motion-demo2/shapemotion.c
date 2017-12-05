@@ -14,22 +14,26 @@
 #include <shape.h>
 #include <abCircle.h>
 #include "buzzer.h"
-
+#include "stateAs.h"
+#include "stateAs.c"
 #define GREEN_LED BIT6
 
 char str[3];
 int numL = 0;
 int numR = 0;
 
+/*The rectangles are initilaized*/
 AbRect rect10 = {abRectGetBounds, abRectCheck, {3,15}}; /**< 10x10 rectangle */ //RED RECTANGLE
 AbRect rect11 = {abRectGetBounds, abRectCheck, {3,15}}; /**< 10x10 rectangle */ //BLACK RECTANGLE
 //AbRArrow rightArrow = {abRArrowGetBounds, abRArrowCheck, 30};
 
+/* The layer outline is defined*/
 AbRectOutline fieldOutline = {	/* playing field */ //line drawn
   abRectOutlineGetBounds, abRectOutlineCheck,   
   {screenWidth/2 - .5, screenHeight/2 - .5}
 };
 
+/*The layers of the drawing are defined and initilaized in this section*/
 Layer fieldLayer = {		/**< Layer outline */
   (AbShape *)&fieldOutline,
   {(screenWidth/2), (screenHeight/2)}, /**< bit below & right of center */
@@ -84,9 +88,6 @@ MovLayer ml0 = { &layer0, {3,3}, 0 }; /**< not all layers move */ //circle movin
 //MovLayer ml1 = { &layer1, {1,2}, &ml3 }; 
 //MovLayer ml0 = { &layer0, {2,1}, &ml1 }; 
 
-
-
-
 void movLayerDraw(MovLayer *movLayers, Layer *layers){
   int row, col;
   MovLayer *movLayer;
@@ -123,8 +124,9 @@ void movLayerDraw(MovLayer *movLayers, Layer *layers){
   } // for moving layer being updated
 }	  
 
-
-Region fence;// = {{screenWidth-5, (screenHeight/2)}, {0, 0}}; /**< Create a fence region */
+Region fence = {
+{10,30}, {SHORT_EDGE_PIXELS-10, LONG_EDGE_PIXELS-10}
+}; /**< Create a fence region */
 
 
 /** Advances a moving shape within a fence
@@ -132,6 +134,9 @@ Region fence;// = {{screenWidth-5, (screenHeight/2)}, {0, 0}}; /**< Create a fen
  *  \param ml The moving shape to be advanced
  *  \param fence The region which will serve as a boundary for ml
  */
+
+
+/*This method was structured with if statements that have instructions of actions to occur based on the wall hit. it is also counting the score and calling the method for the created sound.*/
 void mlAdvance(MovLayer *ml, MovLayer *ml1, MovLayer *ml2,  Region *fence)
 {
 //char str[1];
@@ -143,25 +148,23 @@ void mlAdvance(MovLayer *ml, MovLayer *ml1, MovLayer *ml2,  Region *fence)
     vec2Add(&newPos, &ml->layer->posNext, &ml->velocity);//ball will disapear
     abShapeGetBounds(ml->layer->abShape, &newPos, &shapeBoundary);//ball boundary
     for (axis = 0; axis < 2; axis ++) {
-         drawString5x7(10,10, "YOU:", COLOR_BLACK, COLOR_WHITE);
-         drawString5x7(70,10, "COMPUTER:", COLOR_BLACK, COLOR_WHITE);
+         drawString5x7(10,10, "YOU:", COLOR_BLACK, COLOR_WHITE);//prints the title of the player
+         drawString5x7(70,10, "COMPUTER:", COLOR_BLACK, COLOR_WHITE);//prints a second player title
       if ((shapeBoundary.topLeft.axes[axis] < fence->topLeft.axes[axis]) || (shapeBoundary.botRight.axes[axis] > fence->botRight.axes[axis])){// axes at pos 0 contains L&R and pos  T&B
-        drawString5x7(40,60, "HIT T/B", COLOR_BLACK, COLOR_WHITE);
+        //drawString5x7(40,60, "HIT T/B", COLOR_BLACK, COLOR_WHITE);
         int velocity = ml->velocity.axes[axis] = -ml->velocity.axes[axis];
         newPos.axes[axis] += (2*velocity);
       }	/**< if outside of fence */
         
         /*LEFT*/
         else if (shapeBoundary.topLeft.axes[0] < fence->topLeft.axes[0]){// axes at pos 0 contains L&R and pos 1
-            drawString5x7(40,60, "HIT LEFT", COLOR_BLACK, COLOR_WHITE);
+            //drawString5x7(40,60, "HIT LEFT", COLOR_BLACK, COLOR_WHITE);
             buzzer_set_period(1000);
             numL += 1;
-            //mlAdvance(&ml1, &layer1);
             //newPos.axes[0] += 0; // (screenWidth/2);
             //newPos.axes[1] += 0;//(screenHeight/2);
             if(numL > 2){
                 drawString5x7(40,60, "YOU LOSE!:", COLOR_BLACK, COLOR_WHITE);
-                 buzzer_advance_frequency();
                 layerGetBounds(&fieldLayer, &layer1);//this restarts the game!!!!!!!!!!!!!
                 numL = 0;
                 numR = 0;
@@ -174,9 +177,8 @@ void mlAdvance(MovLayer *ml, MovLayer *ml1, MovLayer *ml2,  Region *fence)
       /*RIGHT*/
         else if (shapeBoundary.botRight.axes[0] > fence->botRight.axes[0]){
             drawString5x7(40,60, "HIT RIGHT", COLOR_BLACK, COLOR_WHITE);
+            buzzer_set_period(1600);
             numR += 1;
-           // mlAdvance(&ml1, &layer1);
-            //p2sw_init(1);
             //newPos.axes[0] += 0;// (screenWidth/2);
             //newPos.axes[1] += 0;//(screenHeight/2);
             if(numR > 2){
@@ -202,8 +204,8 @@ void mlAdvance(MovLayer *ml, MovLayer *ml1, MovLayer *ml2,  Region *fence)
 u_int bgColor = COLOR_VIOLET;     /**< The background color */
 int redrawScreen = 1;           /**< Boolean for whether screen needs to be redrawn */
 
-Region fieldFence;		/**< fence around playing field  */
-
+//Region temp;
+Region fieldFence;		/**< fence around playing field  */ // ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 void blackU(Layer *l){
  Vec2 pos;
  Vec2 update = {0, -3};
@@ -253,7 +255,8 @@ void main()
   
 
 
-  layerGetBounds(&fieldLayer, &fieldFence);
+  layerGetBounds(&fieldLayer, &fieldFence); //ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+  //layerGetBounds(&layer1, &fence);
 
   enableWDTInterrupts();      /**< enable periodic interrupt */
   or_sr(0x8);	              /**< GIE (enable interrupts) */
@@ -273,6 +276,7 @@ void main()
   
 }
 
+
 /** Watchdog timer interrupt handler. 15 interrupts/sec */
 void wdt_c_handler()
 {
@@ -281,34 +285,18 @@ void wdt_c_handler()
   count ++;
   if (count == 15) {
    mlAdvance(&ml0, &ml1, &ml2, &fieldFence);
-  switch (p2sw_read()){
-       case 1: 
-            drawString5x7(40,60, "YOU WIN!:", COLOR_BLACK, COLOR_WHITE);
-           blackU(&layer2);
-            break;
-       case 2:
-           blackD(&layer2);
-           break;
-       case 3:
-           redU(&layer1);
-           break;
-       case 4:
-           redD(&layer1);
-           break;
-   }
-
-    /*if(p2sw_read() == 1){
+    if(caseMethod() == 1){
         blackD(&layer2);
     }
-    else if(p2sw_read() == 2){
+    else if( caseMethod() == 2){
        blackU(&layer2);
     }
-    else if(p2sw_read() == 3){
+    else if( caseMethod() == 3){
        redD(&layer1);
     }
-    else if(p2sw_read() == 4){
+    else if( caseMethod() == 4){
        redU(&layer1);
-    }*/
+    }
       redrawScreen = 1;
       count = 0;
   }
