@@ -93,7 +93,8 @@ and rendered as layers.
 pre-computed circles as layers with a variety of radii, 
 and a demonstration program that renders a circle.
 
-
+## collaboration:
+I partnered with Julio De La Cruz and Jesus Daniel Maynez
 ## Demonstration program
 
 - shape-motion-demo: A demonstration program that uses shapeLib to represent

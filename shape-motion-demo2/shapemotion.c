@@ -15,7 +15,7 @@
 #include <abCircle.h>
 #include "buzzer.h"
 #include "stateAs.h"
-#include "stateAs.c"
+//#include "stateAs.c"
 #define GREEN_LED BIT6
 
 char str[3];
@@ -54,7 +54,7 @@ Layer layer2 = {		/* Layer with a black square */
 
 Layer layer1 = {		/**< Layer with a red square */
   (AbShape *)&rect10,
-  {screenWidth-20, screenHeight/2}, /**< right side */ //{screenWidth-5, screenHeight/2}, /**< right side */
+  {screenWidth-5, screenHeight/2}, /**< right side */ //{screenWidth-5, screenHeight/2}, /**< right side */
   {0,0}, {0,0},				    /* last & next pos */
   COLOR_RED,
   &layer2,
@@ -124,9 +124,9 @@ void movLayerDraw(MovLayer *movLayers, Layer *layers){
   } // for moving layer being updated
 }	  
 
-Region fence = {
-{10,30}, {SHORT_EDGE_PIXELS-10, LONG_EDGE_PIXELS-10}
-}; /**< Create a fence region */
+//Region fence = {
+//{10,30}, {SHORT_EDGE_PIXELS-10, LONG_EDGE_PIXELS-10}
+//}; /**< Create a fence region */
 
 
 /** Advances a moving shape within a fence
@@ -143,6 +143,15 @@ void mlAdvance(MovLayer *ml, MovLayer *ml1, MovLayer *ml2,  Region *fence)
   Vec2 newPos;
   u_char axis;
   Region shapeBoundary;
+  Region blackPaddle;
+  Region redPaddle;
+  Region helper;//created region to bounce
+  helper.topLeft.axes[0] = fence->topLeft.axes[0] + 4;
+  helper.topLeft.axes[1] = fence->topLeft.axes[1];
+  helper.botRight.axes[0] = fence->botRight.axes[0] - 4;
+  helper.botRight.axes[1] = fence->botRight.axes[1];
+  layerGetBounds(&layer2, &blackPaddle);//gets bound
+  layerGetBounds(&layer1, &redPaddle); //**
   for (; ml; ml = ml->next) {
       buzzer_set_period(0);
     vec2Add(&newPos, &ml->layer->posNext, &ml->velocity);//ball will disapear
@@ -155,12 +164,32 @@ void mlAdvance(MovLayer *ml, MovLayer *ml1, MovLayer *ml2,  Region *fence)
         int velocity = ml->velocity.axes[axis] = -ml->velocity.axes[axis];
         newPos.axes[axis] += (2*velocity);
       }	/**< if outside of fence */
+      
+      
+      
+      //Handles right paddle bouncing
+			if((shapeBoundary.topLeft.axes[axis] < helper.topLeft.axes[axis]) || (shapeBoundary.botRight.axes[axis] > helper.botRight.axes[axis])){
+                if (shapeBoundary.topLeft.axes[1] > redPaddle.topLeft.axes[1] && shapeBoundary.botRight.axes[1] < redPaddle.botRight.axes[1] && shapeBoundary.topLeft.axes[0] > (screenWidth/2)){
+                    int velocity = ml->velocity.axes[axis] = -ml->velocity.axes[axis];
+                    newPos.axes[axis] += (2*velocity);
+                      buzzer_set_period(1600);
+                    break;
+            }}
+        //Handles left paddle bouncing
+            if((shapeBoundary.topLeft.axes[axis] < helper.topLeft.axes[axis]) || (shapeBoundary.botRight.axes[axis] > helper.botRight.axes[axis])){
+                if (shapeBoundary.topLeft.axes[1] > blackPaddle.topLeft.axes[1] && shapeBoundary.botRight.axes[1] < blackPaddle.botRight.axes[1] && shapeBoundary.topLeft.axes[0] < (screenWidth/2)){ // 0 0
+                    int velocity = ml->velocity.axes[axis] = -ml->velocity.axes[axis];
+                    newPos.axes[axis] += (2*velocity);
+                    buzzer_set_period(1600);
+                    break;
+      
+            }}
         
         /*LEFT*/
         else if (shapeBoundary.topLeft.axes[0] < fence->topLeft.axes[0]){// axes at pos 0 contains L&R and pos 1
             //drawString5x7(40,60, "HIT LEFT", COLOR_BLACK, COLOR_WHITE);
-            buzzer_set_period(1000);
             numL += 1;
+               buzzer_set_period(400);
             //newPos.axes[0] += 0; // (screenWidth/2);
             //newPos.axes[1] += 0;//(screenHeight/2);
             if(numL > 2){
@@ -176,9 +205,9 @@ void mlAdvance(MovLayer *ml, MovLayer *ml1, MovLayer *ml2,  Region *fence)
       
       /*RIGHT*/
         else if (shapeBoundary.botRight.axes[0] > fence->botRight.axes[0]){
-            drawString5x7(40,60, "HIT RIGHT", COLOR_BLACK, COLOR_WHITE);
-            buzzer_set_period(1600);
+            //drawString5x7(40,60, "HIT RIGHT", COLOR_BLACK, COLOR_WHITE);
             numR += 1;
+             buzzer_set_period(400);
             //newPos.axes[0] += 0;// (screenWidth/2);
             //newPos.axes[1] += 0;//(screenHeight/2);
             if(numR > 2){
